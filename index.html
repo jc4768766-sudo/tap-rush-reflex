@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Tap Rush Reflex</title>
+<meta name="description" content="Fast reflex arcade game for mobile and desktop." />
+<style>
+  :root{
+    --bg1:#07111f; --bg2:#0d1b33; --bg3:#101d3d;
+    --panel:rgba(255,255,255,.08); --text:#eef6ff; --muted:#9bb1d4;
+    --cyan:#22d3ee; --blue:#60a5fa; --yellow:#fbbf24;
+    --shadow:0 20px 50px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none}
+  html,body{
+    margin:0;width:100%;height:100%;overflow:hidden;font-family:Arial,Helvetica,sans-serif;color:var(--text);
+    background:
+      radial-gradient(circle at 15% 20%, rgba(34,211,238,.14), transparent 20%),
+      radial-gradient(circle at 85% 15%, rgba(96,165,250,.16), transparent 18%),
+      radial-gradient(circle at 50% 100%, rgba(244,114,182,.12), transparent 26%),
+      linear-gradient(180deg,var(--bg1),var(--bg2),var(--bg3));
+    touch-action:manipulation;
+  }
+  #app{width:100%;height:100%;position:relative;overflow:hidden}
+  .top-ui{
+    position:absolute;top:0;left:0;right:0;z-index:20;padding:max(12px, env(safe-area-inset-top)) 12px 12px;
+    display:flex;flex-direction:column;gap:10px;pointer-events:none;
+  }
+  .top-row,.bottom-row{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+  .group{display:flex;gap:10px;flex-wrap:wrap}
+  .pill{
+    min-width:86px;padding:10px 14px;border-radius:999px;background:rgba(255,255,255,.09);
+    border:1px solid rgba(255,255,255,.08);box-shadow:var(--shadow);backdrop-filter:blur(8px);pointer-events:auto;
+  }
+  .pill .label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;font-weight:700;margin-bottom:2px}
+  .pill .value{font-size:22px;font-weight:900;line-height:1}
+  .logo-pill{
+    padding:12px 16px;border-radius:18px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.08);
+    box-shadow:var(--shadow);font-weight:900;font-size:18px;letter-spacing:.3px;pointer-events:auto;
+  }
+  .logo-pill span{color:var(--cyan)}
+  .btn{
+    border:none;border-radius:999px;padding:12px 16px;background:rgba(255,255,255,.1);color:var(--text);
+    font-weight:800;cursor:pointer;pointer-events:auto;transition:transform .15s ease, opacity .2s ease, background .2s ease;
+  }
+  .btn:hover{transform:translateY(-1px)} .btn:active{transform:translateY(1px)}
+  .btn.primary{background:linear-gradient(90deg,var(--cyan),var(--blue));color:#07111f}
+  .btn.warn{background:linear-gradient(90deg,var(--yellow),#fb923c);color:#271200}
+  .difficulty-switch{
+    display:flex;gap:8px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.08);border-radius:999px;
+    padding:6px;pointer-events:auto;box-shadow:var(--shadow);
+  }
+  .difficulty-switch button{
+    border:none;border-radius:999px;padding:10px 14px;background:transparent;color:var(--text);font-weight:800;cursor:pointer;
+  }
+  .difficulty-switch button.active{background:rgba(96,165,250,.24);color:#fff}
+  #arena{width:100%;height:100%;display:block;touch-action:none;cursor:pointer}
+  .overlay{
+    position:absolute;inset:0;display:flex;justify-content:center;align-items:center;padding:18px;
+    background:rgba(4,8,18,.54);backdrop-filter:blur(4px);z-index:30;
+  }
+  .hidden{display:none!important}
+  .modal{
+    width:min(100%,520px);padding:26px;border-radius:28px;background:rgba(13,19,38,.95);
+    border:1px solid rgba(255,255,255,.08);box-shadow:var(--shadow);text-align:center;
+  }
+  .modal h1,.modal h2{margin:0 0 10px;line-height:1}
+  .modal h1{font-size:42px}.modal h2{font-size:34px}
+  .modal p{margin:0 0 18px;color:var(--muted);line-height:1.6;font-size:15px}
+  .hero-score{font-size:62px;font-weight:900;line-height:1;margin:8px 0 16px}
+  .modal-actions{display:grid;gap:10px}
+  .guide{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:16px 0 18px}
+  .guide-card{padding:14px;border-radius:18px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08)}
+  .guide-card .small{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:6px;font-weight:700}
+  .guide-card .big{font-size:18px;font-weight:900}
+
+  /* Effects intentionally moved away from play focus */
+  .side-fx{
+    position:absolute;right:12px;top:50%;transform:translateY(-50%);
+    display:flex;flex-direction:column;gap:8px;z-index:25;pointer-events:none;align-items:flex-end;
+  }
+  .hit-badge{
+    min-width:84px;text-align:center;padding:10px 14px;border-radius:999px;
+    background:rgba(13,19,38,.94);border:1px solid rgba(255,255,255,.08);box-shadow:var(--shadow);
+    font-weight:800;opacity:0;transform:translateX(10px);transition:opacity .18s ease, transform .18s ease;
+  }
+  .hit-badge.show{opacity:1;transform:translateX(0)}
+  .hit-badge.good{color:#86efac}
+  .hit-badge.bad{color:#fca5a5}
+  .hit-badge.level{color:#fde68a}
+
+  .pulse-ring{
+    position:absolute;border:3px solid rgba(255,255,255,.55);border-radius:999px;pointer-events:none;z-index:14;
+    opacity:0;transform:translate(-50%,-50%) scale(.5);
+  }
+
+  @media (max-width:700px){
+    .pill{min-width:76px;padding:8px 12px}.pill .value{font-size:20px}.logo-pill{font-size:16px}
+    .modal h1{font-size:34px}.modal h2{font-size:28px}.hero-score{font-size:50px}.guide{grid-template-columns:1fr}
+    .side-fx{right:8px}
+    .hit-badge{min-width:72px;padding:8px 12px;font-size:14px}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="top-ui">
+    <div class="top-row">
+      <div class="group">
+        <div class="logo-pill">Tap Rush <span>Reflex</span></div>
+        <div class="difficulty-switch" id="difficultySwitch">
+          <button data-mode="easy">Easy</button>
+          <button data-mode="normal" class="active">Normal</button>
+          <button data-mode="hard">Hard</button>
+        </div>
+      </div>
+      <div class="group">
+        <button class="btn" id="soundBtn">🔊 Sound</button>
+        <button class="btn" id="pauseBtn">⏸ Pause</button>
+      </div>
+    </div>
+    <div class="bottom-row">
+      <div class="group">
+        <div class="pill"><div class="label">Score</div><div class="value" id="scoreEl">0</div></div>
+        <div class="pill"><div class="label">Best</div><div class="value" id="bestEl">0</div></div>
+        <div class="pill"><div class="label">Combo</div><div class="value" id="comboEl">x1</div></div>
+      </div>
+      <div class="group">
+        <div class="pill"><div class="label">Level</div><div class="value" id="levelEl">1</div></div>
+        <div class="pill"><div class="label">Time</div><div class="value" id="timeEl">30</div></div>
+        <div class="pill"><div class="label">Speed</div><div class="value" id="speedEl">1.0x</div></div>
+      </div>
+    </div>
+  </div>
+
+  <canvas id="arena"></canvas>
+
+  <div class="side-fx">
+    <div class="hit-badge" id="fxBadge"></div>
+  </div>
+  <div class="pulse-ring hidden" id="pulseRing"></div>
+
+  <div class="overlay" id="startOverlay">
+    <div class="modal">
+      <h1>Tap Rush Reflex</h1>
+      <p>Hit the glowing target as fast as you can. Every hit gives points, builds combo, and adds a little time. Miss once and your combo resets.</p>
+      <div class="guide">
+        <div class="guide-card"><div class="small">Desktop</div><div class="big">Click the target</div></div>
+        <div class="guide-card"><div class="small">Mobile</div><div class="big">Tap the target</div></div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn primary" id="startBtn">▶ Start Run</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="pauseOverlay">
+    <div class="modal">
+      <h2>Paused</h2>
+      <p>Resume when you are ready.</p>
+      <div class="modal-actions">
+        <button class="btn primary" id="resumeBtn">Resume</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="gameOverOverlay">
+    <div class="modal">
+      <div id="resultIcon" style="font-size:58px;margin-bottom:8px;">🏆</div>
+      <h2 id="resultTitleEl">Run Complete</h2>
+      <div class="hero-score" id="finalScoreEl">0</div>
+      <p id="resultEl">Nice run. Try again and beat your best score.</p>
+      <div class="modal-actions">
+        <button class="btn primary" id="retryBtn">Play Again</button>
+        <button class="btn warn" id="continueBtn">Watch Ad to Continue</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://sdk.crazygames.com/crazygames-sdk-v3.js"></script>
+<script>
+const cg = {
+  ready:false,
+  async init(){
+    try{
+      if(window.CrazyGames && window.CrazyGames.SDK && !this.ready){
+        await window.CrazyGames.SDK.init();
+        this.ready = true;
+      }
+    }catch(err){ console.warn('CrazyGames SDK init failed', err); }
+  },
+  gameplayStart(){ try{ window.CrazyGames?.SDK?.game?.gameplayStart?.(); }catch(e){} },
+  gameplayStop(){ try{ window.CrazyGames?.SDK?.game?.gameplayStop?.(); }catch(e){} },
+  loadingStart(){ try{ window.CrazyGames?.SDK?.game?.loadingStart?.(); }catch(e){} },
+  loadingStop(){ try{ window.CrazyGames?.SDK?.game?.loadingStop?.(); }catch(e){} },
+  requestRewarded(callbacks){
+    try{ window.CrazyGames?.SDK?.ad?.requestAd?.('rewarded', callbacks); }
+    catch(err){ callbacks?.adError?.(err); }
+  }
+};
+
+const MODES = {
+  easy: { baseSpeed:180, accel:8, time:50 },
+  normal: { baseSpeed:240, accel:12, time:42 },
+  hard: { baseSpeed:300, accel:16, time:34 }
+};
+
+const canvas = document.getElementById('arena');
+const ctx = canvas.getContext('2d');
+const scoreEl = document.getElementById('scoreEl');
+const bestEl = document.getElementById('bestEl');
+const comboEl = document.getElementById('comboEl');
+const levelEl = document.getElementById('levelEl');
+const timeEl = document.getElementById('timeEl');
+const speedEl = document.getElementById('speedEl');
+const soundBtn = document.getElementById('soundBtn');
+const pauseBtn = document.getElementById('pauseBtn');
+const startBtn = document.getElementById('startBtn');
+const resumeBtn = document.getElementById('resumeBtn');
+const retryBtn = document.getElementById('retryBtn');
+const continueBtn = document.getElementById('continueBtn');
+const startOverlay = document.getElementById('startOverlay');
+const pauseOverlay = document.getElementById('pauseOverlay');
+const gameOverOverlay = document.getElementById('gameOverOverlay');
+const finalScoreEl = document.getElementById('finalScoreEl');
+const resultTitleEl = document.getElementById('resultTitleEl');
+const resultIcon = document.getElementById('resultIcon');
+const resultEl = document.getElementById('resultEl');
+const difficultySwitch = document.getElementById('difficultySwitch');
+const fxBadge = document.getElementById('fxBadge');
+const pulseRing = document.getElementById('pulseRing');
+
+let dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+let width = 0, height = 0, running = false, paused = false, animationId = null, lastFrame = 0, soundOn = true, audioCtx = null;
+let best = Number(localStorage.getItem('trr_best') || 0);
+let score = 0, combo = 1, level = 1, timeLeft = 30, currentMode = 'normal';
+
+const orb = { x:0, y:0, r:42, vx:0, vy:0, hue:190, shape:'circle', pulse:0 };
+const particles = [];
+
+function resizeCanvas(){
+  const rect = canvas.getBoundingClientRect();
+  width = rect.width; height = rect.height;
+  canvas.width = Math.floor(width * dpr); canvas.height = Math.floor(height * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  if(!running) placeOrb(true);
+}
+
+function initAudio(){
+  if(!audioCtx){
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if(AC) audioCtx = new AC();
+  }
+  if(audioCtx && audioCtx.state === 'suspended') audioCtx.resume().catch(()=>{});
+}
+
+function beep(freq, duration, type='sine', volume=0.06){
+  if(!soundOn) return;
+  initAudio();
+  if(!audioCtx) return;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = type;
+  osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+  gain.gain.setValueAtTime(0.001, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(volume, audioCtx.currentTime + 0.01);
+  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+  osc.connect(gain); gain.connect(audioCtx.destination);
+  osc.start(); osc.stop(audioCtx.currentTime + duration);
+}
+
+function hitSound(){
+  beep(820, 0.05, 'triangle', 0.09);
+  setTimeout(()=>beep(1040, 0.06, 'triangle', 0.07), 35);
+  setTimeout(()=>beep(1280, 0.04, 'sine', 0.05), 80);
+}
+function missSound(){
+  beep(170, 0.16, 'sawtooth', 0.07);
+  setTimeout(()=>beep(120, 0.18, 'square', 0.05), 50);
+}
+function startSound(){
+  beep(500, 0.06, 'triangle', 0.06);
+  setTimeout(()=>beep(700, 0.06, 'triangle', 0.05), 40);
+  setTimeout(()=>beep(900, 0.07, 'triangle', 0.05), 85);
+}
+function levelUpSound(){
+  beep(880, 0.06, 'triangle', 0.08);
+  setTimeout(()=>beep(1170, 0.08, 'triangle', 0.07), 45);
+  setTimeout(()=>beep(1480, 0.09, 'sine', 0.06), 100);
+}
+
+function showBadge(text, kind){
+  fxBadge.textContent = text;
+  fxBadge.className = 'hit-badge ' + kind;
+  void fxBadge.offsetWidth;
+  fxBadge.classList.add('show');
+  clearTimeout(showBadge._t);
+  showBadge._t = setTimeout(()=>fxBadge.classList.remove('show'), 420);
+}
+
+function spawnPulse(x, y, color){
+  pulseRing.style.left = x + 'px';
+  pulseRing.style.top = y + 'px';
+  pulseRing.style.width = '18px';
+  pulseRing.style.height = '18px';
+  pulseRing.style.borderColor = color;
+  pulseRing.classList.remove('hidden');
+  pulseRing.style.opacity = '0.9';
+  pulseRing.style.transform = 'translate(-50%,-50%) scale(0.6)';
+  const start = performance.now();
+  function anim(ts){
+    const t = Math.min(1, (ts - start) / 180);
+    pulseRing.style.opacity = String(0.9 * (1 - t));
+    pulseRing.style.transform = `translate(-50%,-50%) scale(${0.6 + t * 1.8})`;
+    if(t < 1) requestAnimationFrame(anim);
+    else pulseRing.classList.add('hidden');
+  }
+  requestAnimationFrame(anim);
+}
+
+function addBurst(x, y, color){
+  for(let i=0;i<18;i++){
+    const angle = (Math.PI * 2 * i) / 18 + Math.random() * 0.25;
+    const speed = 90 + Math.random() * 180;
+    particles.push({ x, y, vx:Math.cos(angle)*speed, vy:Math.sin(angle)*speed, life:0.45+Math.random()*0.25, maxLife:0.7, color, size:3+Math.random()*4 });
+  }
+}
+
+function placeOrb(resetVelocity=false){
+  const cfg = MODES[currentMode];
+  orb.x = width * (0.2 + Math.random() * 0.6);
+  orb.y = height * (0.25 + Math.random() * 0.5);
+  orb.r = Math.max(18, 42 - Math.floor(score / 5));
+  orb.hue = 180 + (score * 13) % 140;
+  orb.shape = Math.random() > 0.8 ? 'diamond' : 'circle';
+  orb.pulse = 0;
+  if(resetVelocity){
+    const angle = Math.random() * Math.PI * 2;
+    const base = cfg.baseSpeed;
+    orb.vx = Math.cos(angle) * base;
+    orb.vy = Math.sin(angle) * base;
+  }
+}
+
+function updateHud(){
+  scoreEl.textContent = score;
+  bestEl.textContent = best;
+  comboEl.textContent = 'x' + combo;
+  levelEl.textContent = level;
+  timeEl.textContent = Math.max(0, Math.ceil(timeLeft));
+  const base = MODES[currentMode].baseSpeed;
+  const ratio = Math.hypot(orb.vx, orb.vy) / base;
+  speedEl.textContent = ratio.toFixed(1) + 'x';
+}
+
+function drawGrid(){
+  ctx.save();
+  ctx.globalAlpha = 0.08;
+  ctx.strokeStyle = '#ffffff';
+  const gap = 36;
+  for(let x=0;x<=width;x+=gap){ ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,height); ctx.stroke(); }
+  for(let y=0;y<=height;y+=gap){ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(width,y); ctx.stroke(); }
+  ctx.restore();
+}
+
+function updateParticles(dt){
+  for(let i=particles.length-1;i>=0;i--){
+    const p = particles[i];
+    p.life -= dt;
+    if(p.life <= 0){ particles.splice(i,1); continue; }
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+    p.vx *= 0.98;
+    p.vy *= 0.98;
+  }
+}
+
+function drawParticles(){
+  for(const p of particles){
+    ctx.globalAlpha = Math.max(0, p.life / p.maxLife);
+    ctx.fillStyle = p.color;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawOrb(){
+  const pulse = 1 + Math.sin(orb.pulse) * 0.05;
+  const r = orb.r * pulse;
+  const gradient = ctx.createRadialGradient(orb.x - r*0.25, orb.y - r*0.25, 5, orb.x, orb.y, r*1.1);
+  gradient.addColorStop(0, `hsla(${orb.hue},100%,78%,1)`);
+  gradient.addColorStop(0.45, `hsla(${orb.hue},100%,60%,0.98)`);
+  gradient.addColorStop(1, `hsla(${orb.hue},100%,42%,0.95)`);
+
+  ctx.save();
+  ctx.shadowColor = `hsla(${orb.hue},100%,65%,0.85)`;
+  ctx.shadowBlur = 30;
+  ctx.fillStyle = gradient;
+  if(orb.shape === 'diamond'){
+    ctx.beginPath();
+    ctx.moveTo(orb.x, orb.y-r);
+    ctx.lineTo(orb.x+r, orb.y);
+    ctx.lineTo(orb.x, orb.y+r);
+    ctx.lineTo(orb.x-r, orb.y);
+    ctx.closePath();
+    ctx.fill();
+  } else {
+    ctx.beginPath();
+    ctx.arc(orb.x, orb.y, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255,255,255,0.92)';
+  ctx.lineWidth = 3;
+  if(orb.shape === 'diamond'){
+    ctx.beginPath();
+    ctx.moveTo(orb.x, orb.y-r-8);
+    ctx.lineTo(orb.x+r+8, orb.y);
+    ctx.lineTo(orb.x, orb.y+r+8);
+    ctx.lineTo(orb.x-r-8, orb.y);
+    ctx.closePath();
+    ctx.stroke();
+  } else {
+    ctx.beginPath();
+    ctx.arc(orb.x, orb.y, r+8, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function draw(){
+  ctx.clearRect(0,0,width,height);
+  drawGrid();
+  drawParticles();
+  drawOrb();
+}
+
+function endGame(){
+  running = false;
+  paused = false;
+  cancelAnimationFrame(animationId);
+  cg.gameplayStop();
+  if(score > best){
+    best = score;
+    localStorage.setItem('trr_best', String(best));
+  }
+  updateHud();
+  finalScoreEl.textContent = score;
+
+  if(score >= 60){
+    resultTitleEl.textContent = 'Legendary Win';
+    resultIcon.textContent = '👑';
+    resultEl.textContent = 'Amazing score. This was a top-tier run.';
+  }else if(score >= 35){
+    resultTitleEl.textContent = 'Great Victory';
+    resultIcon.textContent = '🏆';
+    resultEl.textContent = 'Excellent run. You finished strong and earned a trophy.';
+  }else if(score >= 15){
+    resultTitleEl.textContent = 'Nice Finish';
+    resultIcon.textContent = '🥇';
+    resultEl.textContent = 'Good job. Your reflexes are getting sharper.';
+  }else{
+    resultTitleEl.textContent = 'Run Complete';
+    resultIcon.textContent = '🎯';
+    resultEl.textContent = 'Solid start. Play again and push for a bigger score.';
+  }
+  gameOverOverlay.classList.remove('hidden');
+}
+
+function gameLoop(ts){
+  if(!running) return;
+  const dt = Math.min(0.032, (ts - lastFrame) / 1000 || 0.016);
+  lastFrame = ts;
+
+  timeLeft -= dt;
+  if(timeLeft <= 0){
+    timeLeft = 0;
+    updateHud();
+    endGame();
+    return;
+  }
+
+  orb.x += orb.vx * dt;
+  orb.y += orb.vy * dt;
+  orb.pulse += dt * 8;
+
+  if(orb.x - orb.r <= 0 || orb.x + orb.r >= width){
+    orb.vx *= -1;
+    orb.x = Math.max(orb.r, Math.min(width - orb.r, orb.x));
+  }
+  if(orb.y - orb.r <= 0 || orb.y + orb.r >= height){
+    orb.vy *= -1;
+    orb.y = Math.max(orb.r, Math.min(height - orb.r, orb.y));
+  }
+
+  updateParticles(dt);
+  updateHud();
+  draw();
+  animationId = requestAnimationFrame(gameLoop);
+}
+
+function startGame(){
+  initAudio();
+  startSound();
+  const cfg = MODES[currentMode];
+  score = 0;
+  combo = 1;
+  level = 1;
+  timeLeft = cfg.time;
+  running = true;
+  paused = false;
+  placeOrb(true);
+  updateHud();
+  startOverlay.classList.add('hidden');
+  pauseOverlay.classList.add('hidden');
+  gameOverOverlay.classList.add('hidden');
+  lastFrame = performance.now();
+  cancelAnimationFrame(animationId);
+  animationId = requestAnimationFrame(gameLoop);
+  cg.gameplayStart();
+}
+
+function pauseGame(){
+  if(!running) return;
+  running = false;
+  paused = true;
+  cancelAnimationFrame(animationId);
+  pauseOverlay.classList.remove('hidden');
+  cg.gameplayStop();
+}
+
+function resumeGame(){
+  if(!paused) return;
+  paused = false;
+  running = true;
+  pauseOverlay.classList.add('hidden');
+  lastFrame = performance.now();
+  animationId = requestAnimationFrame(gameLoop);
+  cg.gameplayStart();
+}
+
+function continueAfterAd(){
+  gameOverOverlay.classList.add('hidden');
+  timeLeft = Math.max(8, MODES[currentMode].time * 0.35);
+  combo = Math.max(1, Math.floor(combo * 0.5));
+  placeOrb(false);
+  running = true;
+  paused = false;
+  updateHud();
+  lastFrame = performance.now();
+  animationId = requestAnimationFrame(gameLoop);
+  cg.gameplayStart();
+}
+
+function requestContinueAd(){
+  continueBtn.disabled = true;
+  continueBtn.textContent = 'Loading Ad...';
+  cg.requestRewarded({
+    adFinished: () => {
+      continueBtn.disabled = false;
+      continueBtn.textContent = 'Watch Ad to Continue';
+      continueAfterAd();
+    },
+    adError: () => {
+      continueBtn.disabled = false;
+      continueBtn.textContent = 'Watch Ad to Continue';
+      continueAfterAd();
+    }
+  });
+}
+
+function hitTarget(x, y){
+  score += combo;
+  combo += 1;
+  timeLeft += Math.min(1.2, 0.25 + combo * 0.03);
+  hitSound();
+  spawnPulse(x, y, 'rgba(34,211,238,.95)');
+  showBadge('+' + (combo - 1), 'good');
+  addBurst(orb.x, orb.y, `hsla(${orb.hue},100%,65%,1)`);
+  const accel = MODES[currentMode].accel;
+  const speed = Math.hypot(orb.vx, orb.vy) + accel;
+  const angle = Math.atan2(orb.vy, orb.vx) + (Math.random() * 0.9 - 0.45);
+  orb.vx = Math.cos(angle) * speed;
+  orb.vy = Math.sin(angle) * speed;
+  placeOrb(false);
+
+  const newLevel = Math.floor(score / 25) + 1;
+  if(newLevel > level){
+    level = newLevel;
+    timeLeft += 4;
+    levelUpSound();
+    showBadge('Level ' + level + '!', 'level');
+  }
+  updateHud();
+}
+
+function missTarget(x, y){
+  combo = 1;
+  timeLeft = Math.max(0, timeLeft - 2.2);
+  missSound();
+  spawnPulse(x, y, 'rgba(239,68,68,.95)');
+  showBadge('Miss!', 'bad');
+  updateHud();
+  if(timeLeft <= 0) endGame();
+}
+
+function pointHitsTarget(x, y){
+  if(orb.shape === 'diamond'){
+    return (Math.abs(x - orb.x) + Math.abs(y - orb.y)) <= orb.r + 10;
+  }
+  return Math.hypot(x - orb.x, y - orb.y) <= orb.r + 10;
+}
+
+function pressAt(clientX, clientY){
+  if(!running) return;
+  const rect = canvas.getBoundingClientRect();
+  const x = clientX - rect.left;
+  const y = clientY - rect.top;
+  if(pointHitsTarget(x, y)) hitTarget(x, y);
+  else missTarget(x, y);
+}
+
+canvas.addEventListener('pointerdown', (e) => {
+  e.preventDefault();
+  pressAt(e.clientX, e.clientY);
+});
+
+difficultySwitch.addEventListener('click', (e) => {
+  const btn = e.target.closest('button[data-mode]');
+  if(!btn) return;
+  difficultySwitch.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentMode = btn.dataset.mode;
+  if(!running){
+    placeOrb(true);
+    updateHud();
+    draw();
+  }
+});
+
+soundBtn.addEventListener('click', () => {
+  soundOn = !soundOn;
+  soundBtn.textContent = soundOn ? '🔊 Sound' : '🔈 Sound';
+  if(soundOn) beep(620, 0.06, 'triangle', 0.05);
+});
+
+pauseBtn.addEventListener('click', () => {
+  if(running) pauseGame();
+  else if(paused) resumeGame();
+});
+
+startBtn.addEventListener('click', startGame);
+resumeBtn.addEventListener('click', resumeGame);
+retryBtn.addEventListener('click', startGame);
+continueBtn.addEventListener('click', requestContinueAd);
+
+document.addEventListener('visibilitychange', () => {
+  if(document.hidden && running) pauseGame();
+});
+
+window.addEventListener('resize', () => {
+  resizeCanvas();
+  draw();
+});
+
+(async function boot(){
+  cg.loadingStart();
+  await cg.init();
+  cg.loadingStop();
+  bestEl.textContent = best;
+  resizeCanvas();
+  placeOrb(true);
+  updateHud();
+  draw();
+})();
+</script>
+</body>
+</html>
