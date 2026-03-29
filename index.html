@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Tap Rush Mobile Fixed</title>
+<meta name="theme-color" content="#090014">
+<style>
+:root{
+  --bg1:#060010; --bg2:#120022; --bg3:#08111d;
+  --cyan:#00f5ff; --pink:#ff2bd6; --yellow:#ffd84d; --red:#ff4d6d;
+  --white:#f7f8ff; --muted:#d5ceff; --panel:rgba(255,255,255,.07); --stroke:rgba(255,255,255,.10);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%}
+body{
+  overflow:hidden;color:var(--white);font-family:Arial,Helvetica,sans-serif;
+  background:
+    radial-gradient(circle at 20% 10%, rgba(0,245,255,.16), transparent 18%),
+    radial-gradient(circle at 80% 18%, rgba(255,43,214,.14), transparent 18%),
+    linear-gradient(180deg,var(--bg1),var(--bg2) 55%,var(--bg3));
+}
+.hidden{display:none!important}
+.screen{height:100%;padding:12px}
+.center{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+.title{
+  font-size:clamp(34px,8vw,68px);margin:0 0 8px;color:var(--cyan);
+  text-shadow:0 0 16px rgba(0,245,255,.5),0 0 32px rgba(255,43,214,.18);
+}
+.subtitle{max-width:760px;color:var(--muted);line-height:1.7;font-size:15px;margin:0 0 16px}
+.mode-row,.row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.btn{
+  border:none;border-radius:14px;padding:12px 16px;color:#fff;font-weight:900;font-size:14px;cursor:pointer;
+  background:linear-gradient(90deg,var(--pink),#8f59ff);box-shadow:0 0 18px rgba(255,43,214,.20);transition:.16s ease;margin:4px;
+}
+.btn.alt{background:linear-gradient(90deg,var(--cyan),#248bff);box-shadow:0 0 18px rgba(0,245,255,.18)}
+.btn.warn{background:linear-gradient(90deg,var(--yellow),#ff8a00);color:#241300}
+.btn.ghost{background:rgba(255,255,255,.08);box-shadow:none}
+.mode-btn.active{outline:2px solid rgba(255,255,255,.5)}
+.game-wrap{
+  display:grid;
+  grid-template-rows:auto auto 1fr auto;
+  gap:10px;
+  height:100%;
+  max-width:1100px;
+  margin:0 auto;
+}
+.hud{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:8px;
+}
+.card{
+  background:var(--panel);border:1px solid var(--stroke);border-radius:16px;padding:10px;backdrop-filter:blur(8px);
+  box-shadow:0 10px 24px rgba(0,0,0,.22)
+}
+.label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px}
+.value{font-size:22px;font-weight:900;margin-top:3px}
+.tap-zone{
+  position:relative;border-radius:24px;overflow:hidden;min-height:300px;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(0,245,255,.08), transparent 28%),
+    linear-gradient(145deg, rgba(0,245,255,.06), rgba(255,43,214,.07));
+  border:1px solid rgba(255,255,255,.08);
+}
+.info{
+  display:grid;grid-template-columns:1fr auto;gap:10px;align-items:start;
+}
+.info-text{
+  background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:12px;color:var(--muted);line-height:1.6;font-size:13px;
+}
+.progress{height:10px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden;border:1px solid rgba(255,255,255,.08)}
+.progress-fill{height:100%;width:100%;background:linear-gradient(90deg,var(--cyan),var(--pink),var(--yellow));transition:width .12s linear}
+.target{
+  position:absolute;border:none;border-radius:999px;display:grid;place-items:center;cursor:pointer;
+  color:#051018;font-weight:900;box-shadow:0 0 24px rgba(0,245,255,.28);user-select:none;
+  transition:transform .08s ease, filter .12s ease; animation:popin .12s ease;
+}
+@keyframes popin{from{transform:scale(.7);opacity:.5}to{transform:scale(1);opacity:1}}
+.target.good{background:linear-gradient(135deg,var(--cyan),#7be7ff)}
+.target.bad{background:linear-gradient(135deg,var(--red),#ff8a80);color:#2a0710;box-shadow:0 0 24px rgba(255,77,109,.24)}
+.target.gold{background:linear-gradient(135deg,var(--yellow),#ffb300);color:#2d1700;box-shadow:0 0 24px rgba(255,216,77,.24)}
+.target.hit{transform:scale(1.18);filter:brightness(1.15)}
+.particle{
+  position:absolute;border-radius:999px;pointer-events:none;opacity:.9;animation:burst .55s ease forwards;
+}
+@keyframes burst{
+  from{transform:translate(0,0) scale(1);opacity:1}
+  to{transform:translate(var(--dx), var(--dy)) scale(.2);opacity:0}
+}
+.combo-pop,.flash-msg,.new-best{
+  position:fixed;left:50%;transform:translateX(-50%) scale(.92);opacity:0;pointer-events:none;z-index:1500;transition:.18s ease;
+}
+.combo-pop{
+  top:14px;padding:10px 18px;border-radius:999px;background:linear-gradient(90deg,var(--yellow),#ff8a00);color:#241300;font-weight:900;
+  box-shadow:0 0 20px rgba(255,216,77,.25)
+}
+.flash-msg{
+  top:56px;font-size:24px;font-weight:900;color:var(--cyan);text-shadow:0 0 16px rgba(0,245,255,.36)
+}
+.new-best{
+  top:92px;font-size:20px;font-weight:900;color:var(--yellow);text-shadow:0 0 16px rgba(255,216,77,.26)
+}
+.show{opacity:1!important;transform:translateX(-50%) scale(1)!important}
+.result{
+  max-width:480px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10);border-radius:24px;padding:22px;box-shadow:0 18px 36px rgba(0,0,0,.32)
+}
+.big{font-size:48px;font-weight:900;margin:10px 0}
+.small{color:var(--muted);line-height:1.8}
+.stars{font-size:30px;margin:8px 0}
+@media (max-width:700px){
+  .hud{grid-template-columns:repeat(2,1fr)}
+  .value{font-size:20px}
+  .tap-zone{min-height:360px}
+  .info{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div id="comboPop" class="combo-pop">COMBO x2</div>
+<div id="flashMsg" class="flash-msg">PERFECT</div>
+<div id="newBest" class="new-best">NEW HIGH SCORE</div>
+
+<div id="startScreen" class="screen center">
+  <h1 class="title">TAP RUSH</h1>
+  <p class="subtitle">Mobile-fixed build. The tap area is now always visible first, with compact HUD and controls that fit the screen properly.</p>
+  <div class="mode-row">
+    <button class="btn mode-btn active" onclick="setMode('normal', this)">NORMAL</button>
+    <button class="btn mode-btn alt" onclick="setMode('hard', this)">HARD</button>
+    <button class="btn mode-btn warn" onclick="setMode('insane', this)">INSANE</button>
+  </div>
+  <div class="row" style="margin-top:10px">
+    <button class="btn" onclick="startGame()">PLAY ▶</button>
+    <button class="btn alt" onclick="toggleSound()"><span id="startSoundLabel">SOUND ON 🔊</span></button>
+  </div>
+</div>
+
+<div id="gameScreen" class="screen hidden">
+  <div class="game-wrap">
+    <div class="hud">
+      <div class="card"><div class="label">Mode</div><div id="modeValue" class="value">NORMAL</div></div>
+      <div class="card"><div class="label">Time</div><div id="timeValue" class="value">20</div></div>
+      <div class="card"><div class="label">Score</div><div id="scoreValue" class="value">0</div></div>
+      <div class="card"><div class="label">Best</div><div id="bestValue" class="value">0</div></div>
+      <div class="card"><div class="label">Combo</div><div id="comboValue" class="value">x1</div></div>
+      <div class="card"><div class="label">Hits</div><div id="hitsValue" class="value">0</div></div>
+      <div class="card"><div class="label">Misses</div><div id="missesValue" class="value">0</div></div>
+      <div class="card"><div class="label">End</div><div class="value"><button class="btn ghost" style="margin:0;padding:8px 12px;font-size:12px" onclick="endGame()">EXIT</button></div></div>
+    </div>
+
+    <div id="tapZone" class="tap-zone"></div>
+
+    <div class="progress"><div id="progressFill" class="progress-fill"></div></div>
+
+    <div class="info">
+      <div class="info-text">
+        Cyan = score • Gold = bonus • Red = trap. Missing a good target breaks combo. The tap field is kept visible on mobile now.
+      </div>
+      <div class="row">
+        <button class="btn alt" onclick="toggleSound()"><span id="gameSoundLabel">SOUND ON 🔊</span></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="resultScreen" class="screen hidden center">
+  <div class="result">
+    <h2>RUN COMPLETE</h2>
+    <div class="small">Final score</div>
+    <div id="finalScore" class="big">0</div>
+    <div id="finalStars" class="stars">⭐⭐⭐☆☆</div>
+    <div id="finalNote" class="small">Good start. Improve your combo timing.</div>
+    <div class="row" style="margin-top:12px">
+      <button class="btn" onclick="startGame()">PLAY AGAIN 🔄</button>
+      <button class="btn alt" onclick="backHome()">HOME</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let score=0,best=Number(localStorage.getItem("tap_rush_heavy_best")||0),combo=1,hits=0,misses=0,timeLeft=20,gameActive=false;
+let tickTimer=null,spawnTimer=null,soundOn=true,audioCtx=null,spawnDelay=900,mode='normal',bestBrokenThisRun=false;
+const tapZone=document.getElementById("tapZone");
+const modeConfigs={normal:{time:20,spawn:880},hard:{time:18,spawn:700},insane:{time:15,spawn:560}};
+
+function setMode(m,btn){mode=m;document.querySelectorAll('.mode-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active')}
+function initAudio(){if(!audioCtx){const AC=window.AudioContext||window.webkitAudioContext;if(AC) audioCtx=new AC()} if(audioCtx&&audioCtx.state==="suspended") audioCtx.resume()}
+function beep(freq=700,duration=0.05,type="triangle",volume=0.04){if(!soundOn)return;initAudio();if(!audioCtx)return;const osc=audioCtx.createOscillator(), gain=audioCtx.createGain();osc.type=type;osc.frequency.value=freq;gain.gain.setValueAtTime(0.001,audioCtx.currentTime);gain.gain.exponentialRampToValueAtTime(volume,audioCtx.currentTime+0.01);gain.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+duration);osc.connect(gain);gain.connect(audioCtx.destination);osc.start();osc.stop(audioCtx.currentTime+duration)}
+function goodSound(){beep(980,0.05,"triangle",0.05)}
+function bonusSound(){beep(780,0.05,"triangle",0.05);setTimeout(()=>beep(1180,0.08,"triangle",0.05),45)}
+function badSound(){beep(250,0.12,"square",0.04)}
+function comboSound(){beep(680,0.05,"sawtooth",0.05);setTimeout(()=>beep(900,0.06,"triangle",0.05),40)}
+function toggleSound(){soundOn=!soundOn;const txt=soundOn?"SOUND ON 🔊":"SOUND OFF 🔇";document.getElementById("startSoundLabel").textContent=txt;document.getElementById("gameSoundLabel").textContent=txt;if(soundOn) goodSound()}
+function updateHUD(){document.getElementById("scoreValue").textContent=score;document.getElementById("bestValue").textContent=best;document.getElementById("comboValue").textContent="x"+combo;document.getElementById("hitsValue").textContent=hits;document.getElementById("missesValue").textContent=misses;document.getElementById("timeValue").textContent=timeLeft;document.getElementById("modeValue").textContent=mode.toUpperCase();document.getElementById("progressFill").style.width=Math.max(0,(timeLeft/modeConfigs[mode].time)*100)+"%"}
+function randomBetween(min,max){return Math.random()*(max-min)+min}
+function showCombo(){const el=document.getElementById("comboPop");el.textContent="COMBO x"+combo;el.classList.add("show");setTimeout(()=>el.classList.remove("show"),600)}
+function flash(text,good=true){const el=document.getElementById("flashMsg");el.textContent=text;el.style.color=good?"var(--cyan)":"#ff7390";el.classList.add("show");setTimeout(()=>el.classList.remove("show"),620)}
+function showNewBest(){const el=document.getElementById("newBest");el.classList.add("show");setTimeout(()=>el.classList.remove("show"),900)}
+function clearTargets(){tapZone.innerHTML=""}
+function burst(x,y,color){for(let i=0;i<10;i++){const p=document.createElement("div");p.className="particle";p.style.left=x+"px";p.style.top=y+"px";p.style.width=(8+Math.random()*8)+"px";p.style.height=p.style.width;p.style.background=color;p.style.setProperty('--dx',(Math.random()*120-60)+'px');p.style.setProperty('--dy',(Math.random()*120-60)+'px');tapZone.appendChild(p);setTimeout(()=>p.remove(),550)}}
+function updateDifficulty(){const base=modeConfigs[mode].spawn;let next=base;if(hits>=8) next-=90;if(hits>=16) next-=120;if(hits>=25) next-=140;if(hits>=36) next-=160;spawnDelay=Math.max(260,next);restartSpawner()}
+function restartSpawner(){if(spawnTimer) clearInterval(spawnTimer);if(!gameActive) return;spawnTimer=setInterval(createTarget,spawnDelay)}
+function createTarget(){
+  if(!gameActive) return;
+  let kind="good";const r=Math.random();if(r>0.82&&r<=0.94) kind="bad";if(r>0.94) kind="gold";
+  const btn=document.createElement("button");btn.className="target "+kind;btn.textContent=kind==="good"?"TAP":(kind==="bad"?"X":"★");
+  const size=kind==="gold"?92:82;btn.style.width=size+"px";btn.style.height=size+"px";btn.style.fontSize=kind==="gold"?"30px":"24px";
+  const zone=tapZone.getBoundingClientRect();const maxX=Math.max(10,zone.width-size-10);const maxY=Math.max(10,zone.height-size-10);
+  btn.style.left=randomBetween(10,maxX)+"px";btn.style.top=randomBetween(10,maxY)+"px";
+  let removed=false;const life=kind==="good"?1050:(kind==="bad"?1250:980);
+  const removeTarget=()=>{if(removed) return;removed=true;btn.remove()};
+  btn.addEventListener("click",()=>{if(!gameActive||removed)return;const rect=btn.getBoundingClientRect();const zoneRect=tapZone.getBoundingClientRect();const px=rect.left-zoneRect.left+rect.width/2;const py=rect.top-zoneRect.top+rect.height/2;btn.classList.add('hit');
+    if(kind==="good"){hits++;score+=10*combo;combo++;burst(px,py,"rgba(0,245,255,.95)");if(combo>=3) showCombo();if(combo%5===0){comboSound();flash("FIRE 🔥",true)} else {goodSound();flash("GOOD",true)}}
+    else if(kind==="gold"){hits++;score+=30*combo;combo++;burst(px,py,"rgba(255,216,77,.95)");bonusSound();flash("BONUS ✨",true);if(combo>=3) showCombo()}
+    else{misses++;score=Math.max(0,score-12);combo=1;burst(px,py,"rgba(255,77,109,.95)");badSound();flash("TRAP!",false)}
+    if(score>best && !bestBrokenThisRun){bestBrokenThisRun=true;showNewBest()}
+    updateDifficulty();updateHUD();setTimeout(removeTarget,70)
+  });
+  tapZone.appendChild(btn);
+  setTimeout(()=>{if(!removed){if(kind==="good"||kind==="gold"){misses++;combo=1;updateHUD()}removeTarget()}},life);
+}
+function startGame(){clearInterval(tickTimer);clearInterval(spawnTimer);clearTargets();score=0;combo=1;hits=0;misses=0;bestBrokenThisRun=false;timeLeft=modeConfigs[mode].time;spawnDelay=modeConfigs[mode].spawn;gameActive=true;document.getElementById("startScreen").classList.add("hidden");document.getElementById("resultScreen").classList.add("hidden");document.getElementById("gameScreen").classList.remove("hidden");updateHUD();restartSpawner();createTarget();tickTimer=setInterval(()=>{timeLeft--;updateHUD();if(timeLeft<=0) endGame()},1000)}
+function endGame(){if(!gameActive) return;gameActive=false;clearInterval(tickTimer);clearInterval(spawnTimer);clearTargets();if(score>best){best=score;localStorage.setItem("tap_rush_heavy_best",String(best))}document.getElementById("gameScreen").classList.add("hidden");document.getElementById("resultScreen").classList.remove("hidden");document.getElementById("finalScore").textContent=score;let stars="⭐⭐☆☆☆",note="Good start. Improve your combo timing.";if(score>=900){stars="⭐⭐⭐⭐⭐";note="Monster run. This feels elite."}else if(score>=600){stars="⭐⭐⭐⭐☆";note="Strong run. Great pressure control."}else if(score>=300){stars="⭐⭐⭐☆☆";note="Nice reflexes. Push your combo higher."}document.getElementById("finalStars").textContent=stars;document.getElementById("finalNote").textContent=note}
+function backHome(){document.getElementById("resultScreen").classList.add("hidden");document.getElementById("startScreen").classList.remove("hidden")}
+updateHUD();toggleSound();toggleSound();
+</script>
+</body>
+</html>
