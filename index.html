@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tap Rush Ultimate</title>
+<style>
+body{margin:0;background:#050010;color:#fff;font-family:Arial;text-align:center;overflow:hidden}
+h1{color:#00f5ff}
+.screen{display:none;padding:20px}
+.active{display:block}
+.btn{padding:12px 18px;border:none;border-radius:12px;background:linear-gradient(90deg,#ff2bd6,#7a5cff);color:#fff;font-weight:bold;margin:5px;cursor:pointer}
+.tap{position:relative;height:400px;border-radius:20px;margin-top:10px;background:#0a0f1f;overflow:hidden}
+.target{position:absolute;width:80px;height:80px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;cursor:pointer;transition:0.1s}
+.good{background:#00f5ff;color:#000;box-shadow:0 0 20px #00f5ff}
+.bad{background:#ff4d6d}
+.gold{background:#ffd84d;color:#000}
+.target:active{transform:scale(1.2)}
+.flash{position:fixed;top:40px;left:50%;transform:translateX(-50%);font-size:28px;opacity:0;transition:0.2s}
+.show{opacity:1}
+</style>
+</head>
+<body>
+
+<div id="menu" class="screen active">
+<h1>TAP RUSH ULTIMATE</h1>
+<button class="btn" onclick="start()">START</button>
+</div>
+
+<div id="game" class="screen">
+<div>Score: <span id="score">0</span> | Combo: <span id="combo">1</span></div>
+<div id="tap" class="tap"></div>
+</div>
+
+<div id="end" class="screen">
+<h1 id="endText">GAME OVER</h1>
+<h2 id="final"></h2>
+<button class="btn" onclick="start()">PLAY AGAIN</button>
+</div>
+
+<div id="flash" class="flash">🔥</div>
+
+<script>
+let score=0,combo=1,time=20,spawn,interval;
+const tap=document.getElementById("tap");
+
+function flash(txt){
+let f=document.getElementById("flash");
+f.textContent=txt;
+f.classList.add("show");
+setTimeout(()=>f.classList.remove("show"),300);
+}
+
+function start(){
+score=0;combo=1;time=20;
+menu.classList.remove("active");
+end.classList.remove("active");
+game.classList.add("active");
+update();
+
+interval=setInterval(()=>{
+time--;
+if(time<=0) endGame();
+},1000);
+
+spawn=setInterval(create,600);
+}
+
+function update(){
+scoreEl.textContent=score;
+comboEl.textContent=combo;
+}
+
+const scoreEl=document.getElementById("score");
+const comboEl=document.getElementById("combo");
+
+function create(){
+let t=document.createElement("div");
+let r=Math.random();
+let type="good";
+if(r>0.8) type="bad";
+if(r>0.95) type="gold";
+
+t.className="target "+type;
+t.textContent= type=="good"?"T":type=="bad"?"X":"★";
+
+t.style.left=Math.random()*300+"px";
+t.style.top=Math.random()*300+"px";
+
+t.onclick=()=>{
+if(type=="good"){
+score+=10*combo;combo++;flash("GOOD");
+}
+else if(type=="gold"){
+score+=30*combo;combo++;flash("BONUS");
+}
+else{
+score-=10;combo=1;flash("BAD");
+}
+update();
+t.remove();
+};
+
+tap.appendChild(t);
+setTimeout(()=>{t.remove();combo=1;update()},800);
+}
+
+function endGame(){
+clearInterval(interval);
+clearInterval(spawn);
+tap.innerHTML="";
+game.classList.remove("active");
+end.classList.add("active");
+final.textContent="Score: "+score;
+
+if(score>300) endText.textContent="🔥 INSANE RUN";
+else if(score>150) endText.textContent="⚡ GREAT RUN";
+else endText.textContent="GAME OVER";
+}
+</script>
+
+</body>
+</html>
